@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <system:String x:Key="App.Title">meshIt</system:String>
+    <system:String x:Key="Chat.TypeMessage">Type a message…</system:String>
+    <system:String x:Key="Chat.Send">Send</system:String>
+    <system:String x:Key="Chat.NoPeer">Select a peer to start chatting</system:String>
+    <system:String x:Key="Chat.Typing">is typing…</system:String>
+    <system:String x:Key="Chat.Disappearing">Disappearing message</system:String>
+    <system:String x:Key="File.Send">Send File</system:String>
+    <system:String x:Key="File.Sending">Sending…</system:String>
+    <system:String x:Key="File.DragDrop">Drop files here to send</system:String>
+    <system:String x:Key="Peers.Title">Nearby Peers</system:String>
+    <system:String x:Key="Peers.NoPeers">Scanning for peers…</system:String>
+    <system:String x:Key="Peers.Online">Online</system:String>
+    <system:String x:Key="Peers.Offline">Offline</system:String>
+    <system:String x:Key="Settings.Title">Settings</system:String>
+    <system:String x:Key="Settings.Theme">Theme</system:String>
+    <system:String x:Key="Settings.Language">Language</system:String>
+    <system:String x:Key="Settings.ScreenLock">Screen Lock</system:String>
+    <system:String x:Key="Settings.Backup">Backup &amp; Restore</system:String>
+    <system:String x:Key="Settings.ClearData">Clear All Data</system:String>
+    <system:String x:Key="Settings.About">About meshIt</system:String>
+    <system:String x:Key="Diagnostics.Title">Network Diagnostics</system:String>
+    <system:String x:Key="Diagnostics.Connections">Active Connections</system:String>
+    <system:String x:Key="Diagnostics.Sent">Messages Sent</system:String>
+    <system:String x:Key="Diagnostics.Received">Messages Received</system:String>
+    <system:String x:Key="Identity.Title">Your Identity</system:String>
+    <system:String x:Key="Identity.Verify">Verify Fingerprint</system:String>
+    <system:String x:Key="Lock.Title">meshIt is Locked</system:String>
+    <system:String x:Key="Lock.EnterPin">Enter PIN to unlock</system:String>
+    <system:String x:Key="Lock.Unlock">Unlock</system:String>
+    <system:String x:Key="Wipe.Confirm">This will permanently delete ALL data. Continue?</system:String>
+    <system:String x:Key="Wipe.Done">All data wiped.</system:String>
+</ResourceDictionary>

@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <system:String x:Key="App.Title">meshIt</system:String>
+    <system:String x:Key="Chat.TypeMessage">Écrivez un message…</system:String>
+    <system:String x:Key="Chat.Send">Envoyer</system:String>
+    <system:String x:Key="Chat.NoPeer">Sélectionnez un contact pour discuter</system:String>
+    <system:String x:Key="Chat.Typing">est en train d'écrire…</system:String>
+    <system:String x:Key="Chat.Disappearing">Message éphémère</system:String>
+    <system:String x:Key="File.Send">Envoyer un Fichier</system:String>
+    <system:String x:Key="File.Sending">Envoi en cours…</system:String>
+    <system:String x:Key="File.DragDrop">Déposez des fichiers ici pour envoyer</system:String>
+    <system:String x:Key="Peers.Title">Appareils à Proximité</system:String>
+    <system:String x:Key="Peers.NoPeers">Recherche d'appareils…</system:String>
+    <system:String x:Key="Peers.Online">En ligne</system:String>
+    <system:String x:Key="Peers.Offline">Hors ligne</system:String>
+    <system:String x:Key="Settings.Title">Paramètres</system:String>
+    <system:String x:Key="Settings.Theme">Thème</system:String>
+    <system:String x:Key="Settings.Language">Langue</system:String>
+    <system:String x:Key="Settings.ScreenLock">Verrouillage d'écran</system:String>
+    <system:String x:Key="Settings.Backup">Sauvegarde et Restauration</system:String>
+    <system:String x:Key="Settings.ClearData">Effacer toutes les données</system:String>
+    <system:String x:Key="Settings.About">À propos de meshIt</system:String>
+    <system:String x:Key="Diagnostics.Title">Diagnostic Réseau</system:String>
+    <system:String x:Key="Diagnostics.Connections">Connexions Actives</system:String>
+    <system:String x:Key="Diagnostics.Sent">Messages Envoyés</system:String>
+    <system:String x:Key="Diagnostics.Received">Messages Reçus</system:String>
+    <system:String x:Key="Identity.Title">Votre Identité</system:String>
+    <system:String x:Key="Identity.Verify">Vérifier l'Empreinte</system:String>
+    <system:String x:Key="Lock.Title">meshIt est verrouillé</system:String>
+    <system:String x:Key="Lock.EnterPin">Entrez votre code PIN pour déverrouiller</system:String>
+    <system:String x:Key="Lock.Unlock">Déverrouiller</system:String>
+    <system:String x:Key="Wipe.Confirm">Ceci supprimera définitivement TOUTES les données. Continuer?</system:String>
+    <system:String x:Key="Wipe.Done">Toutes les données ont été effacées.</system:String>
+</ResourceDictionary>

@@ -1,0 +1,120 @@
+<UserControl x:Class="meshIt.Views.ChannelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="16,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" Text="📢 Channels" FontSize="16" FontWeight="SemiBold"
+                   Foreground="#E0E0E0" Margin="0,0,0,12"/>
+
+        <!-- Join input -->
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#2A2A4A" CornerRadius="8" Padding="2,0">
+                <TextBox Text="{Binding ChannelInput, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="13" Padding="10,8"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="#E0E0E0" CaretBrush="#7C4DFF"/>
+            </Border>
+            <Button Grid.Column="1" Content="Join" Margin="8,0,0,0"
+                    Command="{Binding JoinChannelCommand}"
+                    Cursor="Hand" Padding="14,8">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#3F51B5"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#5C6BC0"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </Grid>
+
+        <!-- Active channels -->
+        <ListBox Grid.Row="2" ItemsSource="{Binding Channels}"
+                 SelectedItem="{Binding SelectedChannel}"
+                 Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="12,10"/>
+                    <Setter Property="Margin" Value="0,2"/>
+                    <Setter Property="Background" Value="#1E1E3A"/>
+                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                        Margin="{TemplateBinding Margin}">
+                                    <ContentPresenter/>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#2A2A5E"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#252548"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold"
+                                   FontSize="14" Foreground="#E0E0E0"/>
+                        <TextBlock Grid.Column="1" FontSize="11" Foreground="#757575"
+                                   VerticalAlignment="Center" Margin="8,0">
+                            <Run Text="{Binding MemberCount, Mode=OneWay}"/>
+                            <Run Text="members"/>
+                        </TextBlock>
+                        <Button Grid.Column="2" Content="✕" FontSize="12"
+                                Command="{Binding DataContext.LeaveChannelCommand,
+                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding Name}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="#EF5350" Cursor="Hand" Padding="6,2"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Empty state -->
+        <TextBlock Grid.Row="2" Text="No channels yet. Type #name and Join."
+                   Foreground="#616161" FontSize="12"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="{Binding Channels.Count, 
+                       Converter={StaticResource ZeroToVisConverter}, FallbackValue=Visible}"/>
+    </Grid>
+</UserControl>
