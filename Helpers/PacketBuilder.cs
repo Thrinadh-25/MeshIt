@@ -1,5 +1,6 @@
 using System.IO.Hashing;
 using System.Text;
+using System.Text.Json;
 using meshIt.Models;
 
 namespace meshIt.Helpers;
@@ -11,8 +12,8 @@ public static class PacketBuilder
 {
     /// <summary>v1 header: Version(1)+Type(1)+Seq(4)+SenderId(16)+CRC(4) = 26</summary>
     private const int V1HeaderSize = 26;
-    /// <summary>v2 header: v1(26)+OriginPub(32)+DestPub(32)+Hop(1)+Flags(1) = 92</summary>
-    private const int V2HeaderSize = 92;
+    /// <summary>v2 header: v1(26)+OriginPub(32)+DestPub(32)+Hop(1)+Flags(1)+TTL(1) = 93</summary>
+    private const int V2HeaderSize = 93;
 
     // ---- Serialize ----
 
@@ -42,7 +43,9 @@ public static class PacketBuilder
 
     private static byte[] SerializeV2(Packet packet)
     {
-        var payloadLen = packet.Payload?.Length ?? 0;
+        // Encode routing metadata as JSON into payload if present
+        var payload = EncodePayloadWithMetadata(packet);
+        var payloadLen = payload.Length;
         var buffer = new byte[V2HeaderSize + payloadLen];
         var offset = 0;
 
@@ -56,9 +59,10 @@ public static class PacketBuilder
         WriteBytes(buffer, ref offset, packet.DestinationPublicKey, 32);
         buffer[offset++] = packet.HopCount;
         buffer[offset++] = (byte)(packet.IsCompressed ? 1 : 0);
+        buffer[offset++] = packet.TTL;
 
         if (payloadLen > 0)
-            WriteBytes(buffer, ref offset, packet.Payload!, payloadLen);
+            WriteBytes(buffer, ref offset, payload, payloadLen);
 
         var crc = ComputeCrc32(buffer.AsSpan(0, offset));
         Array.Copy(crc, 0, buffer, offset, 4);
@@ -110,6 +114,7 @@ public static class PacketBuilder
         packet.DestinationPublicKey = ReadBytes(buffer, ref offset, 32);
         packet.HopCount = buffer[offset++];
         packet.IsCompressed = buffer[offset++] != 0;
+        packet.TTL = buffer[offset++];
 
         var payloadLen = buffer.Length - V2HeaderSize;
         packet.Payload = payloadLen > 0 ? ReadBytes(buffer, ref offset, payloadLen) : Array.Empty<byte>();
@@ -117,6 +122,9 @@ public static class PacketBuilder
         packet.Checksum = ReadBytes(buffer, ref offset, 4);
         var expected = ComputeCrc32(buffer.AsSpan(0, offset - 4));
         if (!expected.AsSpan().SequenceEqual(packet.Checksum)) return null;
+
+        // Decode routing metadata from payload
+        DecodePayloadMetadata(packet);
 
         return packet;
     }
@@ -173,6 +181,84 @@ public static class PacketBuilder
             OriginatorPublicKey = senderPubKey,
             Payload = payload
         };
+    }
+
+    /// <summary>Create a mesh routing or channel packet with JSON-encoded metadata.</summary>
+    public static Packet CreateMeshPacket(PacketType type, byte[] originPubKey, byte[] destPubKey,
+        byte ttl, string? channelName, List<string>? routeHistory, byte[] payload, uint seq)
+    {
+        return new Packet
+        {
+            Version = 0x02,
+            Type = type,
+            SequenceNumber = seq,
+            SenderId = originPubKey.Length >= 16 ? originPubKey[..16] : originPubKey,
+            OriginatorPublicKey = originPubKey,
+            DestinationPublicKey = destPubKey,
+            TTL = ttl,
+            ChannelName = channelName,
+            RouteHistory = routeHistory ?? new List<string>(),
+            HopCount = 0,
+            Payload = payload
+        };
+    }
+
+    // ---- Metadata encoding helpers ----
+
+    /// <summary>Encode RouteHistory + ChannelName as a JSON prefix on the payload for mesh packets.</summary>
+    private static byte[] EncodePayloadWithMetadata(Packet packet)
+    {
+        var needsMeta = packet.RouteHistory.Count > 0 || packet.ChannelName != null;
+        if (!needsMeta)
+            return packet.Payload ?? Array.Empty<byte>();
+
+        var meta = new PacketMetadata
+        {
+            RouteHistory = packet.RouteHistory,
+            ChannelName = packet.ChannelName
+        };
+        var metaJson = JsonSerializer.SerializeToUtf8Bytes(meta);
+
+        // Format: [4 bytes metaLen][metaJson][originalPayload]
+        var origPayload = packet.Payload ?? Array.Empty<byte>();
+        var result = new byte[4 + metaJson.Length + origPayload.Length];
+        BitConverter.GetBytes(metaJson.Length).CopyTo(result, 0);
+        metaJson.CopyTo(result, 4);
+        origPayload.CopyTo(result, 4 + metaJson.Length);
+        return result;
+    }
+
+    /// <summary>Decode RouteHistory + ChannelName from payload if present.</summary>
+    private static void DecodePayloadMetadata(Packet packet)
+    {
+        if (packet.Payload.Length < 4) return;
+
+        // Check if payload starts with a metadata length prefix
+        var metaLen = BitConverter.ToInt32(packet.Payload, 0);
+        if (metaLen <= 0 || metaLen > packet.Payload.Length - 4) return;
+
+        try
+        {
+            var metaJson = packet.Payload.AsSpan(4, metaLen);
+            var meta = JsonSerializer.Deserialize<PacketMetadata>(metaJson);
+            if (meta != null)
+            {
+                packet.RouteHistory = meta.RouteHistory ?? new List<string>();
+                packet.ChannelName = meta.ChannelName;
+                // Strip metadata from payload, leaving only the original content
+                packet.Payload = packet.Payload.AsSpan(4 + metaLen).ToArray();
+            }
+        }
+        catch
+        {
+            // Not metadata — treat entire payload as raw data
+        }
+    }
+
+    private class PacketMetadata
+    {
+        public List<string>? RouteHistory { get; set; }
+        public string? ChannelName { get; set; }
     }
 
     // ---- Private helpers ----

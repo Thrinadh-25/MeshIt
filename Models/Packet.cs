@@ -21,6 +21,9 @@ public enum PacketType : byte
     ChannelMessage = 0x21,
     ChannelJoin    = 0x22,
     ChannelLeave   = 0x23,
+    RouteDiscovery = 0x24,
+    RouteReply     = 0x25,
+    ChannelAnnounce = 0x26,
 
     // Phase 2 — Presence
     PeerAnnouncement = 0x30
@@ -66,8 +69,17 @@ public class Packet
     /// <summary>Current hop count for mesh routing.</summary>
     public byte HopCount { get; set; }
 
+    /// <summary>TTL — hops remaining before the packet is dropped. Max 7.</summary>
+    public byte TTL { get; set; } = 7;
+
     /// <summary>Whether the payload is LZ4-compressed.</summary>
     public bool IsCompressed { get; set; }
+
+    /// <summary>Channel name for channel messages (null = direct/broadcast).</summary>
+    public string? ChannelName { get; set; }
+
+    /// <summary>Fingerprints of nodes that have relayed this packet (loop prevention).</summary>
+    public List<string> RouteHistory { get; set; } = new();
 
     // ---- Payload + integrity ----
 

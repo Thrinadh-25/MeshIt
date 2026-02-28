@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "JoryzpgB/bs=",
+  "dgSpecHash": "1QW+s3/Y6W8=",
   "success": true,
   "projectFilePath": "C:\\Users\\Thrinadh reddy\\MeshIt\\meshIt.csproj",
   "expectedPackageFiles": [
@@ -46,6 +46,7 @@
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\naudio.winforms\\2.2.1\\naudio.winforms.2.2.1.nupkg.sha512",
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\naudio.winmm\\2.2.1\\naudio.winmm.2.2.1.nupkg.sha512",
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\nsec.cryptography\\24.4.0\\nsec.cryptography.24.4.0.nupkg.sha512",
+    "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\plugin.ble\\3.1.0\\plugin.ble.3.1.0.nupkg.sha512",
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\qrcoder\\1.6.0\\qrcoder.1.6.0.nupkg.sha512",
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\serilog\\4.1.0\\serilog.4.1.0.nupkg.sha512",
     "C:\\Users\\Thrinadh reddy\\.nuget\\packages\\serilog.sinks.file\\6.0.0\\serilog.sinks.file.6.0.0.nupkg.sha512",

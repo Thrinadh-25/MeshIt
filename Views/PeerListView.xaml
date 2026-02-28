@@ -4,49 +4,46 @@
              xmlns:converters="clr-namespace:meshIt.Converters">
     <UserControl.Resources>
         <converters:StatusToBrushConverter x:Key="StatusToBrush"/>
-        <converters:SignalStrengthConverter x:Key="SignalStrength"/>
     </UserControl.Resources>
 
-    <Grid>
-        <!-- Header -->
+    <Grid Background="#2C2F33">
         <Grid.RowDefinitions>
-            <RowDefinition Height="60"/>
+            <RowDefinition Height="56"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#1A1A2E" Padding="16,12">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2C2F33" Padding="14,12">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="📡" FontSize="20" Margin="0,0,8,0"/>
-                <TextBlock Text="Nearby Users" FontSize="16" FontWeight="SemiBold"
-                           Foreground="#E0E0E0" VerticalAlignment="Center"/>
+                <TextBlock Text="👥" FontSize="18" Margin="0,0,8,0"/>
+                <TextBlock Text="Nearby Users" FontSize="16" FontWeight="Bold" Foreground="White"/>
             </StackPanel>
         </Border>
 
         <!-- Peer List -->
-        <ListBox Grid.Row="1" 
+        <ListBox Grid.Row="1"
                  ItemsSource="{Binding Peers}"
                  SelectedItem="{Binding SelectedPeer, Mode=TwoWay}"
-                 Background="#0F0F23"
-                 BorderThickness="0"
+                 Background="Transparent" BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    <Setter Property="Padding" Value="12,10"/>
+                    <Setter Property="Padding" Value="10,8"/>
                     <Setter Property="Cursor" Value="Hand"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
                                 <Border x:Name="Bd" Padding="{TemplateBinding Padding}"
-                                        Background="Transparent" CornerRadius="8" Margin="6,2">
+                                        Background="Transparent" CornerRadius="4" Margin="6,1">
                                     <ContentPresenter/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#1E1E3A"/>
+                                        <Setter TargetName="Bd" Property="Background" Value="#36393F"/>
                                     </Trigger>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#2D2D5E"/>
+                                        <Setter TargetName="Bd" Property="Background" Value="#393C43"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -58,48 +55,60 @@
                 <DataTemplate>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="36"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Avatar circle -->
-                        <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18"
-                                Background="#3F51B5" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Name, Converter={x:Null}}"
-                                       FontSize="16" FontWeight="Bold" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Tag="{Binding Name}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text">
-                                            <Setter.Value>
-                                                <Binding Path="Name" FallbackValue="?">
-                                                    <Binding.StringFormat>{0}</Binding.StringFormat>
-                                                </Binding>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Border>
+                        <!-- Avatar -->
+                        <Grid Grid.Column="0" VerticalAlignment="Center">
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#7289DA">
+                                <TextBlock FontSize="14" FontWeight="Bold" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text">
+                                                <Setter.Value>
+                                                    <Binding Path="Name" FallbackValue="?"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+                            <!-- Online indicator -->
+                            <Ellipse Width="10" Height="10"
+                                     Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"
+                                     HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                     Stroke="#2C2F33" StrokeThickness="2"/>
+                        </Grid>
 
-                        <!-- Name + status -->
+                        <!-- Name + Protocol -->
                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium"
-                                       Foreground="#E8E8E8"/>
+                                       Foreground="White"/>
                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                <Ellipse Width="8" Height="8" 
-                                         Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"
-                                         Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#9E9E9E"/>
+                                <!-- Protocol badge -->
+                                <TextBlock FontSize="11" Foreground="#72767D" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="🔵 Classic"/>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Status}" FontSize="10" Foreground="#72767D"/>
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Signal strength -->
-                        <TextBlock Grid.Column="2" 
-                                   Text="{Binding SignalStrength, Converter={StaticResource SignalStrength}}"
-                                   FontSize="10" Foreground="#757575" VerticalAlignment="Center"/>
+                        <!-- Signal -->
+                        <TextBlock Grid.Column="2" FontSize="11" Foreground="#72767D"
+                                   VerticalAlignment="Center" Margin="4,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="▂▄"/>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

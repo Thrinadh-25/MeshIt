@@ -1,3 +1,4 @@
+using System.Text;
 using InTheHand.Net;
 using meshIt.Helpers;
 using meshIt.Models;
@@ -6,10 +7,8 @@ using Serilog;
 namespace meshIt.Services;
 
 /// <summary>
-/// Replaces the UWP GATT server. In the 32feet.NET architecture, incoming data
-/// arrives via the BleConnectionManager's DataReceived event. This service
-/// routes incoming packets to the appropriate handler (messages vs files)
-/// based on packet type. It acts as a dispatcher rather than a server.
+/// Routes incoming Bluetooth data to the appropriate handler based on packet type.
+/// Acts as a dispatcher for messages, files, handshakes, and mesh routing/channel control packets.
 /// </summary>
 public sealed class GattServerService : IDisposable
 {
@@ -21,6 +20,27 @@ public sealed class GattServerService : IDisposable
 
     /// <summary>Fired when data is received on the file channel.</summary>
     public event Action<byte[]>? FileDataReceived;
+
+    /// <summary>Fired when a mesh-routed message packet arrives.</summary>
+    public event Action<Packet>? RoutedPacketReceived;
+
+    /// <summary>Fired when a route discovery packet arrives.</summary>
+    public event Action<Packet>? RouteDiscoveryReceived;
+
+    /// <summary>Fired when a route reply packet arrives.</summary>
+    public event Action<Packet>? RouteReplyReceived;
+
+    /// <summary>Fired when a channel message packet arrives.</summary>
+    public event Action<Packet>? ChannelMessageReceived;
+
+    /// <summary>Fired when a channel join packet arrives.</summary>
+    public event Action<Packet>? ChannelJoinReceived;
+
+    /// <summary>Fired when a channel leave packet arrives.</summary>
+    public event Action<Packet>? ChannelLeaveReceived;
+
+    /// <summary>Fired when a channel announce packet arrives.</summary>
+    public event Action<Packet>? ChannelAnnounceReceived;
 
     public GattServerService(BleConnectionManager connectionManager)
     {
@@ -35,7 +55,7 @@ public sealed class GattServerService : IDisposable
         _connectionManager.DataReceived += OnDataReceived;
         _isRunning = true;
 
-        Log.Information("Bluetooth data dispatcher started (message + file routing)");
+        Log.Information("Bluetooth data dispatcher started (all packet types)");
         return Task.CompletedTask;
     }
 
@@ -53,7 +73,6 @@ public sealed class GattServerService : IDisposable
     {
         try
         {
-            // Peek at the packet type to route to the correct handler
             var packet = PacketBuilder.Deserialize(data);
             if (packet is null)
             {
@@ -75,8 +94,44 @@ public sealed class GattServerService : IDisposable
                     break;
 
                 case PacketType.RoutedMessage:
-                    // Routed mesh messages go through the message channel
                     Log.Debug("Routing mesh message from {Address} ({Length} bytes)", address, data.Length);
+                    RoutedPacketReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.RouteDiscovery:
+                    Log.Debug("Route discovery from {Address}", address);
+                    RouteDiscoveryReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.RouteReply:
+                    Log.Debug("Route reply from {Address}", address);
+                    RouteReplyReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.ChannelMessage:
+                    Log.Debug("Channel message from {Address}", address);
+                    ChannelMessageReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.ChannelJoin:
+                    Log.Debug("Channel join from {Address}", address);
+                    ChannelJoinReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.ChannelLeave:
+                    Log.Debug("Channel leave from {Address}", address);
+                    ChannelLeaveReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.ChannelAnnounce:
+                    Log.Debug("Channel announce from {Address}", address);
+                    ChannelAnnounceReceived?.Invoke(packet);
+                    break;
+
+                case PacketType.NoiseHandshakeMsg1:
+                case PacketType.NoiseHandshakeMsg2:
+                case PacketType.NoiseHandshakeMsg3:
+                    Log.Debug("Noise handshake from {Address}", address);
                     MessageDataReceived?.Invoke(data);
                     break;
 

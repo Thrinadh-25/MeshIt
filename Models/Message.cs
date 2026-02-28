@@ -27,4 +27,10 @@ public partial class Message : ObservableObject
 
     /// <summary>GUID of the peer this conversation belongs to (the other party).</summary>
     public Guid PeerId { get; set; }
+
+    /// <summary>Channel name if this is a channel message (null = DM).</summary>
+    public string? ChannelName { get; set; }
+
+    /// <summary>Route trace string showing the path taken (e.g. "You → Alice → Bob").</summary>
+    public string? RouteTrace { get; set; }
 }

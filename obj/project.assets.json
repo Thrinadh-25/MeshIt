@@ -897,6 +897,19 @@
           "lib/net6.0/NSec.Cryptography.dll": {}
         }
       },
+      "Plugin.BLE/3.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Plugin.BLE.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Plugin.BLE.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "QRCoder/1.6.0": {
         "type": "package",
         "dependencies": {
@@ -2731,6 +2744,62 @@
         "nsec.png"
       ]
     },
+    "Plugin.BLE/3.1.0": {
+      "sha512": "vKwCqysb0FvPsF2pmNL5Qdw2WI+GwlUyF6U56Au6F7y3f2cnhec9RWD1XZg74zRk10LcGibwiRXoJLl5ry8XHw==",
+      "type": "package",
+      "path": "plugin.ble/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon_small.png",
+        "lib/monoandroid13.0/Plugin.BLE.dll",
+        "lib/monoandroid13.0/Plugin.BLE.pdb",
+        "lib/monoandroid13.0/Plugin.BLE.xml",
+        "lib/net7.0-android33.0/Plugin.BLE.dll",
+        "lib/net7.0-android33.0/Plugin.BLE.pdb",
+        "lib/net7.0-android33.0/Plugin.BLE.xml",
+        "lib/net7.0-ios16.1/Plugin.BLE.dll",
+        "lib/net7.0-ios16.1/Plugin.BLE.pdb",
+        "lib/net7.0-ios16.1/Plugin.BLE.xml",
+        "lib/net7.0-maccatalyst16.1/Plugin.BLE.dll",
+        "lib/net7.0-maccatalyst16.1/Plugin.BLE.pdb",
+        "lib/net7.0-maccatalyst16.1/Plugin.BLE.xml",
+        "lib/net7.0-windows10.0.19041/Plugin.BLE.dll",
+        "lib/net7.0-windows10.0.19041/Plugin.BLE.pdb",
+        "lib/net7.0-windows10.0.19041/Plugin.BLE.xml",
+        "lib/net8.0-android34.0/Plugin.BLE.dll",
+        "lib/net8.0-android34.0/Plugin.BLE.pdb",
+        "lib/net8.0-android34.0/Plugin.BLE.xml",
+        "lib/net8.0-ios17.2/Plugin.BLE.dll",
+        "lib/net8.0-ios17.2/Plugin.BLE.pdb",
+        "lib/net8.0-ios17.2/Plugin.BLE.xml",
+        "lib/net8.0-maccatalyst17.2/Plugin.BLE.dll",
+        "lib/net8.0-maccatalyst17.2/Plugin.BLE.pdb",
+        "lib/net8.0-maccatalyst17.2/Plugin.BLE.xml",
+        "lib/net8.0-windows10.0.19041/Plugin.BLE.dll",
+        "lib/net8.0-windows10.0.19041/Plugin.BLE.pdb",
+        "lib/net8.0-windows10.0.19041/Plugin.BLE.xml",
+        "lib/net8.0-windows10.0.22000/Plugin.BLE.dll",
+        "lib/net8.0-windows10.0.22000/Plugin.BLE.pdb",
+        "lib/net8.0-windows10.0.22000/Plugin.BLE.xml",
+        "lib/netstandard2.0/Plugin.BLE.dll",
+        "lib/netstandard2.0/Plugin.BLE.pdb",
+        "lib/netstandard2.0/Plugin.BLE.xml",
+        "lib/uap10.0.17763/Plugin.BLE.dll",
+        "lib/uap10.0.17763/Plugin.BLE.pdb",
+        "lib/uap10.0.17763/Plugin.BLE.pri",
+        "lib/uap10.0.17763/Plugin.BLE.xml",
+        "lib/xamarinios10/Plugin.BLE.dll",
+        "lib/xamarinios10/Plugin.BLE.pdb",
+        "lib/xamarinios10/Plugin.BLE.xml",
+        "lib/xamarinmac20/Plugin.BLE.dll",
+        "lib/xamarinmac20/Plugin.BLE.pdb",
+        "lib/xamarinmac20/Plugin.BLE.xml",
+        "plugin.ble.3.1.0.nupkg.sha512",
+        "plugin.ble.nuspec"
+      ]
+    },
     "QRCoder/1.6.0": {
       "sha512": "XmPA81eo+oRxBuyVdswsSkTGTE1d3thfF11Z1PdD7oB56A6HU4G4AAOdySmGRMb/cljwlFTMWUtosGEnwpS6GA==",
       "type": "package",
@@ -3403,6 +3472,7 @@
       "Microsoft.EntityFrameworkCore.Sqlite >= 8.0.11",
       "NAudio >= 2.2.1",
       "NSec.Cryptography >= 24.4.0",
+      "Plugin.BLE >= 3.1.0",
       "QRCoder >= 1.6.0",
       "Serilog >= 4.1.0",
       "Serilog.Sinks.File >= 6.0.0",
@@ -3484,6 +3554,10 @@
           "NSec.Cryptography": {
             "target": "Package",
             "version": "[24.4.0, )"
+          },
+          "Plugin.BLE": {
+            "target": "Package",
+            "version": "[3.1.0, )"
           },
           "QRCoder": {
             "target": "Package",

@@ -6,46 +6,81 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
     </UserControl.Resources>
 
-    <Grid Background="#16162B">
+    <Grid Background="#36393F">
         <Grid.RowDefinitions>
-            <RowDefinition Height="56"/>
+            <RowDefinition Height="48"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Chat header -->
-        <Border Grid.Row="0" Background="#1A1A2E" Padding="16,0">
+        <Border Grid.Row="0" Background="#36393F" BorderBrush="#2C2F33" BorderThickness="0,0,0,1" Padding="16,0">
             <Grid>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding SelectedPeer, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="💬" FontSize="18" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding SelectedPeer.Name}" FontSize="16" FontWeight="SemiBold"
-                               Foreground="#E0E0E0" VerticalAlignment="Center"/>
+                <!-- Channel header -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="#" FontSize="20" FontWeight="Bold" Foreground="#72767D" Margin="0,0,6,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentChannelName}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding CurrentChannelName}" FontSize="16" FontWeight="SemiBold"
+                               Foreground="White" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentChannelName}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Peer header -->
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentChannelName}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                        <Run Text="@"/>
+                        <Run Text="{Binding SelectedPeer.Name, Mode=OneWay, FallbackValue=''}"/>
+                    </TextBlock>
                 </StackPanel>
-                <TextBlock Text="Select a peer to start chatting"
-                           FontSize="14" Foreground="#757575" VerticalAlignment="Center"
-                           HorizontalAlignment="Center">
+
+                <!-- Empty state -->
+                <TextBlock Text="Select a channel or user" FontSize="14" Foreground="#72767D"
+                           VerticalAlignment="Center" HorizontalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedPeer}" Value="{x:Null}">
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding SelectedPeer}" Value="{x:Null}"/>
+                                        <Condition Binding="{Binding CurrentChannelName}" Value="{x:Null}"/>
+                                    </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-
-                <!-- Settings button -->
-                <Button Content="⚙️" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Command="{Binding ToggleSettingsCommand}"
-                        Background="Transparent" BorderThickness="0" Foreground="White"
-                        FontSize="18" Cursor="Hand" Padding="8,4" Margin="0,0,4,0"/>
             </Grid>
         </Border>
 
-        <!-- Messages list -->
+        <!-- Messages -->
         <ListBox Grid.Row="1" ItemsSource="{Binding Messages}"
                  Background="Transparent" BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -58,7 +93,14 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
-                                <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                                <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#32353B"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
@@ -66,118 +108,87 @@
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid>
-                        <!-- Outgoing message (right-aligned) -->
-                        <Border HorizontalAlignment="Right" MaxWidth="400" CornerRadius="16,16,4,16"
-                                Padding="14,10" Margin="60,2,0,2"
-                                Background="#3F51B5">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsOutgoing}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <StackPanel>
-                                <TextBlock Text="{Binding Content}" FontSize="14" Foreground="White"
-                                           TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm}'}"
-                                           FontSize="10" Foreground="#B0BEC5" HorizontalAlignment="Right"
-                                           Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Incoming message (left-aligned) -->
-                        <Border HorizontalAlignment="Left" MaxWidth="400" CornerRadius="16,16,16,4"
-                                Padding="14,10" Margin="0,2,60,2"
-                                Background="#2A2A4A">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsOutgoing}" Value="False">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <StackPanel>
-                                <TextBlock Text="{Binding SenderName}" FontSize="11" Foreground="#7C4DFF"
-                                           FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBlock Text="{Binding Content}" FontSize="14" Foreground="#E0E0E0"
-                                           TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm}'}"
-                                           FontSize="10" Foreground="#757575" HorizontalAlignment="Right"
-                                           Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    <StackPanel Margin="0,6">
+                        <!-- Sender line -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                            <TextBlock Text="{Binding SenderName}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="#7289DA"/>
+                            <!-- Channel badge -->
+                            <TextBlock FontSize="11" Foreground="#43B581" Margin="8,0,0,0"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ChannelName}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <Run Text="in "/>
+                                <Run Text="{Binding ChannelName, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Text="{Binding Timestamp, StringFormat=' — {0:HH:mm}'}"
+                                       FontSize="11" Foreground="#72767D" Margin="8,0,0,0"
+                                       VerticalAlignment="Center"/>
+                            <!-- Hop count badge -->
+                            <TextBlock FontSize="10" Foreground="#72767D" Margin="8,0,0,0"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RouteTrace}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <Run Text="🔀 "/>
+                                <Run Text="{Binding RouteTrace, Mode=OneWay}"/>
+                            </TextBlock>
+                        </StackPanel>
+                        <!-- Message content -->
+                        <TextBlock Text="{Binding Content}" FontSize="14" Foreground="#DCDDDE"
+                                   TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- Input bar -->
-        <Border Grid.Row="2" Background="#1A1A2E" Padding="12" CornerRadius="0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- Input area -->
+        <Border Grid.Row="2" Padding="16,0,16,16">
+            <Border Background="#40444B" CornerRadius="8" Padding="4,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Attach file -->
-                <Button Grid.Column="0" Content="📎" FontSize="20"
-                        Command="{Binding SendFileCommand}"
-                        Background="Transparent" BorderThickness="0" Foreground="#B0BEC5"
-                        Cursor="Hand" Padding="8,6" VerticalAlignment="Center" Margin="0,0,4,0"
-                        ToolTip="Send a file"/>
+                    <!-- Attach -->
+                    <Button Grid.Column="0" Content="➕" FontSize="16"
+                            Command="{Binding SendFileCommand}"
+                            Background="Transparent" BorderThickness="0" Foreground="#B9BBBE"
+                            Cursor="Hand" Padding="10,8" ToolTip="Attach file"/>
 
-                <!-- Message input -->
-                <Border Grid.Column="1" Background="#2A2A4A" CornerRadius="24" Padding="4,0">
-                    <TextBox Text="{Binding MessageText, UpdateSourceTrigger=PropertyChanged}"
-                             Background="Transparent" BorderThickness="0" Foreground="#E0E0E0"
-                             FontSize="14" Padding="16,10" VerticalAlignment="Center"
-                             CaretBrush="#7C4DFF"
-                             x:Name="MessageInput">
+                    <!-- Text input -->
+                    <TextBox Grid.Column="1"
+                             Text="{Binding MessageText, UpdateSourceTrigger=PropertyChanged}"
+                             Background="Transparent" BorderThickness="0" Foreground="#DCDDDE"
+                             FontSize="14" Padding="8,10" VerticalAlignment="Center"
+                             CaretBrush="#7289DA">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Return" Command="{Binding SendMessageCommand}"/>
                         </TextBox.InputBindings>
                     </TextBox>
-                </Border>
 
-                <!-- Send button -->
-                <Button Grid.Column="2" Content="➤" FontSize="20"
-                        Command="{Binding SendMessageCommand}"
-                        Cursor="Hand" Padding="12,8" Margin="8,0,0,0"
-                        VerticalAlignment="Center" ToolTip="Send message">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Background" Value="#3F51B5"/>
-                            <Setter Property="Foreground" Value="White"/>
-                            <Setter Property="BorderThickness" Value="0"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}"
-                                                CornerRadius="20" Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#5C6BC0"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-            </Grid>
+                    <!-- Send -->
+                    <Button Grid.Column="2" Content="➤" FontSize="16"
+                            Command="{Binding SendMessageCommand}"
+                            Background="Transparent" BorderThickness="0" Foreground="#7289DA"
+                            Cursor="Hand" Padding="10,8" ToolTip="Send"/>
+                </Grid>
+            </Border>
         </Border>
     </Grid>
 </UserControl>

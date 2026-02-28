@@ -22,6 +22,12 @@ public partial class Channel : ObservableObject
     /// <summary>When the channel was created.</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Last message/activity time for this channel.</summary>
+    [ObservableProperty] private DateTime _lastActivity = DateTime.UtcNow;
+
     /// <summary>Whether the local user has joined this channel.</summary>
     [ObservableProperty] private bool _isJoined;
+
+    /// <summary>Member fingerprints → display names.</summary>
+    public Dictionary<string, string> MemberNames { get; set; } = new();
 }
