@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InTheHand.Net;
 using meshIt.Data;
 using meshIt.Models;
 using meshIt.Services;
@@ -13,6 +14,7 @@ namespace meshIt.ViewModels;
 
 /// <summary>
 /// Main view model — orchestrates Phase 1 + 2 + 3 services.
+/// Updated for 32feet.NET Bluetooth (RFCOMM) instead of UWP BLE GATT.
 /// </summary>
 public partial class MainViewModel : ObservableObject, IDisposable
 {
@@ -90,8 +92,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _advertiser = new BleAdvertiser();
         _scanner = new BleScanner();
-        _gattServer = new GattServerService();
         _connectionManager = new BleConnectionManager();
+        _gattServer = new GattServerService(_connectionManager);  // Now takes connectionManager
         _messageService = new MessageService(_connectionManager, _gattServer, db);
         _fileTransferService = new FileTransferService(_connectionManager, _gattServer);
 
@@ -133,6 +135,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _fileTransferService.TransferCompleted += OnTransferCompleted;
         _fileTransferService.TransferFailed += OnTransferFailed;
 
+        // Wire up advertiser → connection manager for incoming connections
+        _advertiser.IncomingConnection += (client, address) =>
+        {
+            _connectionManager.RegisterIncomingConnection(client, address);
+        };
+
         // Wire up Phase 2 events
         _noiseService.SessionEstablished += OnNoiseSessionEstablished;
         _meshRoutingService.MessageDelivered += OnRoutedMessageDelivered;
@@ -168,18 +176,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IdentityVm));
             OnPropertyChanged(nameof(ShortFingerprint));
 
-            // ---- BLE availability check (Phase 3 fix) ----
+            // ---- Bluetooth availability check ----
             StatusText = "Checking Bluetooth…";
             var (bleAvailable, bleMessage) = await BleAvailabilityChecker.CheckAsync();
             if (!bleAvailable)
             {
                 IsBleAvailable = false;
                 StatusText = $"⚠ {bleMessage}";
-                Log.Warning("BLE not available: {Reason}", bleMessage);
+                Log.Warning("Bluetooth not available: {Reason}", bleMessage);
                 return;
             }
 
-            Log.Information("BLE check passed: {Info}", bleMessage);
+            Log.Information("Bluetooth check passed: {Info}", bleMessage);
 
             var userId = _settings.Current.UserId;
             _messageService.SetIdentity(userId, Username);
@@ -198,8 +206,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             IsBleAvailable = false;
-            StatusText = $"⚠ BLE error: {ex.Message}";
-            Log.Error(ex, "BLE initialization failed");
+            StatusText = $"⚠ Bluetooth error: {ex.Message}";
+            Log.Error(ex, "Bluetooth initialization failed");
         }
     }
 
@@ -428,7 +436,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     // ============================================================
-    // Phase 1 BLE event handlers
+    // Phase 1 Bluetooth event handlers
     // ============================================================
 
     private void OnPeerDiscovered(Peer peer)
@@ -451,7 +459,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void OnPeerLost(ulong addr)
+    private void OnPeerLost(BluetoothAddress addr)
     {
         _dispatcher.Invoke(() =>
         {
@@ -460,7 +468,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void OnPeerDisconnected(ulong addr)
+    private void OnPeerDisconnected(BluetoothAddress addr)
     {
         _dispatcher.Invoke(() =>
         {

@@ -1,89 +1,100 @@
+using InTheHand.Net.Bluetooth;
 using Serilog;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Radios;
 
 namespace meshIt.Services;
 
 /// <summary>
-/// Checks BLE hardware availability with detailed error reporting.
-/// Must be called before starting any BLE services.
+/// Checks Bluetooth hardware availability using 32feet.NET Win32 APIs.
+/// No MSIX packaging or app manifest required.
 /// </summary>
 public static class BleAvailabilityChecker
 {
     /// <summary>
-    /// Check whether BLE is available and ready.
-    /// Returns (available, detailed error message).
+    /// Check whether Bluetooth is available and ready.
+    /// Returns (available, detailed status message).
     /// </summary>
-    public static async Task<(bool Available, string Message)> CheckAsync()
+    public static Task<(bool Available, string Message)> CheckAsync()
     {
         try
         {
-            // Step 1: Get the default Bluetooth adapter
-            var adapter = await BluetoothAdapter.GetDefaultAsync();
-            if (adapter is null)
-            {
-                return (false, "No Bluetooth adapter found. Please connect a Bluetooth dongle or enable your built-in adapter.");
-            }
-
-            // Step 2: Check if adapter supports BLE
-            if (!adapter.IsLowEnergySupported)
-            {
-                return (false, "Your Bluetooth adapter does not support Bluetooth Low Energy (BLE 4.0+). A newer adapter is required.");
-            }
-
-            // Step 3: Check if the radio is accessible
-            var radio = await adapter.GetRadioAsync();
+            var radio = BluetoothRadio.Default;
             if (radio is null)
             {
-                // Radio access might be denied — try the Radios API
-                var access = await Radio.RequestAccessAsync();
-                if (access != RadioAccessStatus.Allowed)
-                {
-                    return (false, "Bluetooth radio access denied. Go to Windows Settings → Privacy → Radios and allow this app.");
-                }
-                return (false, "Bluetooth radio not accessible. Try restarting the Bluetooth Support service.");
+                return Task.FromResult((false,
+                    "No Bluetooth adapter found. Please connect a Bluetooth dongle or enable your built-in adapter in Device Manager."));
             }
 
-            // Step 4: Check radio state
-            switch (radio.State)
+            if (radio.Mode == RadioMode.PowerOff)
             {
-                case RadioState.Off:
-                    return (false, "Bluetooth is turned OFF. Please enable it in Windows Settings → Bluetooth & devices.");
-
-                case RadioState.Disabled:
-                    return (false, "Bluetooth adapter is disabled. Enable it in Device Manager → Bluetooth.");
-
-                case RadioState.Unknown:
-                    return (false, "Bluetooth state is unknown. Try restarting your computer.");
-
-                case RadioState.On:
-                    break; // All good
+                return Task.FromResult((false,
+                    "Bluetooth is turned OFF. Please enable it in Windows Settings → Bluetooth & devices."));
             }
 
-            // Step 5: Check advertisement support
-            if (!adapter.IsAdvertisementOffloadSupported)
-            {
-                Log.Warning("BLE advertisement offload not supported — software advertising will be used");
-            }
-
-            Log.Information("BLE available: Adapter={AdapterId}, Radio={RadioState}, BLE={BleSupported}",
-                adapter.DeviceId, radio.State, adapter.IsLowEnergySupported);
-
-            return (true, $"BLE ready — {adapter.DeviceId}");
+            var info = $"Bluetooth ready — {radio.Name} ({radio.LocalAddress}), Mode: {radio.Mode}";
+            Log.Information("Bluetooth available: {Info}", info);
+            return Task.FromResult((true, info));
         }
-        catch (UnauthorizedAccessException)
+        catch (PlatformNotSupportedException)
         {
-            return (false, "Bluetooth permission denied. Run the app as Administrator or add Bluetooth capability.");
-        }
-        catch (TypeInitializationException ex)
-        {
-            Log.Error(ex, "WinRT type initialization failed");
-            return (false, "Windows Runtime Bluetooth APIs not available. Ensure you're running Windows 10 1809+ and the project targets windows10.0.19041.0.");
+            return Task.FromResult((false,
+                "Bluetooth is not supported on this platform. Ensure Bluetooth drivers are installed."));
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "BLE availability check failed");
-            return (false, $"BLE check failed: {ex.Message}");
+            Log.Error(ex, "Bluetooth availability check failed");
+            return Task.FromResult((false, $"Bluetooth check failed: {ex.Message}"));
         }
     }
+
+    /// <summary>
+    /// Get detailed hardware diagnostics for display in a startup dialog.
+    /// </summary>
+    public static BluetoothDiagnostics GetDiagnostics()
+    {
+        var diag = new BluetoothDiagnostics();
+
+        try
+        {
+            var radio = BluetoothRadio.Default;
+            if (radio is null)
+            {
+                diag.AdapterFound = false;
+                diag.ErrorMessage = "No Bluetooth adapter detected";
+                return diag;
+            }
+
+            diag.AdapterFound = true;
+            diag.AdapterName = radio.Name ?? "Unknown Adapter";
+            diag.AdapterAddress = radio.LocalAddress?.ToString() ?? "Unknown";
+            diag.RadioMode = radio.Mode.ToString();
+            diag.IsEnabled = radio.Mode != RadioMode.PowerOff;
+
+            if (!diag.IsEnabled)
+            {
+                diag.ErrorMessage = "Bluetooth radio is powered off";
+            }
+        }
+        catch (Exception ex)
+        {
+            diag.AdapterFound = false;
+            diag.ErrorMessage = ex.Message;
+        }
+
+        return diag;
+    }
+}
+
+/// <summary>
+/// Diagnostic details about the Bluetooth hardware state.
+/// </summary>
+public class BluetoothDiagnostics
+{
+    public bool AdapterFound { get; set; }
+    public string AdapterName { get; set; } = "Not found";
+    public string AdapterAddress { get; set; } = "N/A";
+    public string RadioMode { get; set; } = "Unknown";
+    public bool IsEnabled { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public bool IsReady => AdapterFound && IsEnabled;
 }

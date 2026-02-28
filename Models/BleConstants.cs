@@ -1,37 +1,30 @@
 namespace meshIt.Models;
 
 /// <summary>
-/// Custom BLE UUIDs and constants for the meshIt protocol.
+/// Constants for the meshIt Bluetooth protocol.
+/// Uses RFCOMM (Bluetooth Classic) via 32feet.NET instead of BLE GATT.
 /// </summary>
 public static class BleConstants
 {
-    /// <summary>meshIt service UUID – advertised so peers can find each other.</summary>
+    /// <summary>meshIt RFCOMM service UUID – used for discovery and connections.</summary>
     public static readonly Guid ServiceUuid =
         Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
-    /// <summary>GATT characteristic for text messages.</summary>
-    public static readonly Guid MessageCharacteristicUuid =
-        Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567891");
+    /// <summary>Maximum payload per RFCOMM write (before chunking).</summary>
+    public const int MaxPayloadSize = 4096;
 
-    /// <summary>GATT characteristic for file transfer data.</summary>
-    public static readonly Guid FileCharacteristicUuid =
-        Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567892");
-
-    /// <summary>Company ID embedded in manufacturer-specific advertisement data (arbitrary).</summary>
-    public const ushort CompanyId = 0xFFFF;
-
-    /// <summary>Maximum Attribute Protocol payload per BLE packet.</summary>
-    public const int MaxMtuSize = 247;
-
-    /// <summary>
-    /// Usable payload per chunk after subtracting the packet header.
-    /// Header = 1 (version) + 1 (type) + 4 (seq) + 16 (senderId) + 4 (checksum) = 26 bytes.
-    /// </summary>
-    public const int MaxPayloadSize = MaxMtuSize - 26;
+    /// <summary>Read buffer size for RFCOMM streams.</summary>
+    public const int StreamBufferSize = 8192;
 
     /// <summary>Number of chunks to send before waiting for an ACK.</summary>
     public const int AckWindowSize = 10;
 
     /// <summary>Connection retry limit.</summary>
     public const int MaxRetries = 3;
+
+    /// <summary>Discovery interval in seconds.</summary>
+    public const int DiscoveryIntervalSeconds = 10;
+
+    /// <summary>Company ID embedded in peer identification payloads (arbitrary).</summary>
+    public const ushort CompanyId = 0xFFFF;
 }

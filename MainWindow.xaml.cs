@@ -21,6 +21,15 @@ public partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // Show Bluetooth diagnostic dialog on startup
+        var btDialog = new BluetoothDiagnosticDialog { Owner = this };
+        if (btDialog.ShowDialog() != true)
+        {
+            // User chose not to continue (Bluetooth unavailable or cancelled)
+            _viewModel.IsBleAvailable = false;
+            _viewModel.StatusText = "⚠ Bluetooth check skipped or unavailable";
+        }
+
         if (string.IsNullOrWhiteSpace(_viewModel.Username))
         {
             var dialog = new UserSetupDialog { Owner = this };

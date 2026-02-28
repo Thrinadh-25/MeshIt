@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("meshIt")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2b0164ac6877bf30618f91c38d66ad10d189c001")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00793bf82dfbba96f379d73909e47acd68f84ac7")]
 [assembly: System.Reflection.AssemblyProductAttribute("meshIt")]
 [assembly: System.Reflection.AssemblyTitleAttribute("meshIt")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

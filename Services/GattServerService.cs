@@ -1,138 +1,98 @@
-using System.Runtime.InteropServices.WindowsRuntime;
+using InTheHand.Net;
+using meshIt.Helpers;
 using meshIt.Models;
 using Serilog;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Storage.Streams;
 
 namespace meshIt.Services;
 
 /// <summary>
-/// Hosts a local GATT server with meshIt service and characteristics so that
-/// remote peers can write text messages and file data to us.
+/// Replaces the UWP GATT server. In the 32feet.NET architecture, incoming data
+/// arrives via the BleConnectionManager's DataReceived event. This service
+/// routes incoming packets to the appropriate handler (messages vs files)
+/// based on packet type. It acts as a dispatcher rather than a server.
 /// </summary>
 public sealed class GattServerService : IDisposable
 {
-    private GattServiceProvider? _serviceProvider;
-    private GattLocalCharacteristic? _messageCharacteristic;
-    private GattLocalCharacteristic? _fileCharacteristic;
+    private readonly BleConnectionManager _connectionManager;
     private bool _isRunning;
 
-    /// <summary>Fired when data is received on the message characteristic.</summary>
+    /// <summary>Fired when data is received on the message channel.</summary>
     public event Action<byte[]>? MessageDataReceived;
 
-    /// <summary>Fired when data is received on the file characteristic.</summary>
+    /// <summary>Fired when data is received on the file channel.</summary>
     public event Action<byte[]>? FileDataReceived;
 
-    /// <summary>Start the GATT server.</summary>
-    public async Task StartAsync()
+    public GattServerService(BleConnectionManager connectionManager)
     {
-        if (_isRunning) return;
+        _connectionManager = connectionManager;
+    }
 
+    /// <summary>Start listening for incoming data.</summary>
+    public Task StartAsync()
+    {
+        if (_isRunning) return Task.CompletedTask;
+
+        _connectionManager.DataReceived += OnDataReceived;
+        _isRunning = true;
+
+        Log.Information("Bluetooth data dispatcher started (message + file routing)");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Stop listening.</summary>
+    public void Stop()
+    {
+        if (!_isRunning) return;
+
+        _connectionManager.DataReceived -= OnDataReceived;
+        _isRunning = false;
+        Log.Information("Bluetooth data dispatcher stopped");
+    }
+
+    private void OnDataReceived(BluetoothAddress address, byte[] data)
+    {
         try
         {
-            var result = await GattServiceProvider.CreateAsync(BleConstants.ServiceUuid);
-            if (result.Error != Windows.Devices.Bluetooth.BluetoothError.Success)
+            // Peek at the packet type to route to the correct handler
+            var packet = PacketBuilder.Deserialize(data);
+            if (packet is null)
             {
-                Log.Error("Failed to create GATT service provider: {Error}", result.Error);
+                Log.Warning("Received invalid packet from {Address}", address);
                 return;
             }
 
-            _serviceProvider = result.ServiceProvider;
-
-            // --- Message characteristic (write-without-response) ---
-            _messageCharacteristic = await CreateWriteCharacteristicAsync(
-                BleConstants.MessageCharacteristicUuid);
-            if (_messageCharacteristic is not null)
-                _messageCharacteristic.WriteRequested += OnMessageWriteRequested;
-
-            // --- File characteristic (write-without-response) ---
-            _fileCharacteristic = await CreateWriteCharacteristicAsync(
-                BleConstants.FileCharacteristicUuid);
-            if (_fileCharacteristic is not null)
-                _fileCharacteristic.WriteRequested += OnFileWriteRequested;
-
-            // Start advertising the GATT service
-            var advParams = new GattServiceProviderAdvertisingParameters
+            switch (packet.Type)
             {
-                IsConnectable = true,
-                IsDiscoverable = true
-            };
-            _serviceProvider.StartAdvertising(advParams);
-            _isRunning = true;
+                case PacketType.TextMessage:
+                    Log.Debug("Routing text message from {Address} ({Length} bytes)", address, data.Length);
+                    MessageDataReceived?.Invoke(data);
+                    break;
 
-            Log.Information("GATT Server started with message and file characteristics");
+                case PacketType.FileMetadata:
+                case PacketType.FileChunk:
+                    Log.Debug("Routing file data from {Address} ({Length} bytes)", address, data.Length);
+                    FileDataReceived?.Invoke(data);
+                    break;
+
+                case PacketType.RoutedMessage:
+                    // Routed mesh messages go through the message channel
+                    Log.Debug("Routing mesh message from {Address} ({Length} bytes)", address, data.Length);
+                    MessageDataReceived?.Invoke(data);
+                    break;
+
+                default:
+                    Log.Warning("Unknown packet type {Type} from {Address}", packet.Type, address);
+                    break;
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to start GATT server");
+            Log.Error(ex, "Error routing incoming data from {Address}", address);
         }
-    }
-
-    /// <summary>Stop the GATT server and clean up.</summary>
-    public void Stop()
-    {
-        if (!_isRunning || _serviceProvider is null) return;
-
-        _serviceProvider.StopAdvertising();
-        _isRunning = false;
-        Log.Information("GATT Server stopped");
-    }
-
-    private async Task<GattLocalCharacteristic?> CreateWriteCharacteristicAsync(Guid uuid)
-    {
-        if (_serviceProvider is null) return null;
-
-        var charParams = new GattLocalCharacteristicParameters
-        {
-            CharacteristicProperties = GattCharacteristicProperties.WriteWithoutResponse
-                                       | GattCharacteristicProperties.Write,
-            WriteProtectionLevel = GattProtectionLevel.Plain,
-            ReadProtectionLevel = GattProtectionLevel.Plain
-        };
-
-        var charResult = await _serviceProvider.Service.CreateCharacteristicAsync(uuid, charParams);
-        if (charResult.Error != Windows.Devices.Bluetooth.BluetoothError.Success)
-        {
-            Log.Error("Failed to create characteristic {Uuid}: {Error}", uuid, charResult.Error);
-            return null;
-        }
-
-        return charResult.Characteristic;
-    }
-
-    private async void OnMessageWriteRequested(GattLocalCharacteristic sender,
-        GattWriteRequestedEventArgs args)
-    {
-        using var deferral = args.GetDeferral();
-        var request = await args.GetRequestAsync();
-        if (request is null) return;
-
-        var data = request.Value.ToArray();
-        Log.Debug("GATT message data received: {Length} bytes", data.Length);
-        MessageDataReceived?.Invoke(data);
-
-        if (request.Option == GattWriteOption.WriteWithResponse)
-            request.Respond();
-    }
-
-    private async void OnFileWriteRequested(GattLocalCharacteristic sender,
-        GattWriteRequestedEventArgs args)
-    {
-        using var deferral = args.GetDeferral();
-        var request = await args.GetRequestAsync();
-        if (request is null) return;
-
-        var data = request.Value.ToArray();
-        Log.Debug("GATT file data received: {Length} bytes", data.Length);
-        FileDataReceived?.Invoke(data);
-
-        if (request.Option == GattWriteOption.WriteWithResponse)
-            request.Respond();
     }
 
     public void Dispose()
     {
         Stop();
-        _serviceProvider = null;
     }
 }

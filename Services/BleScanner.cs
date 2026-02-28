@@ -1,125 +1,116 @@
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using InTheHand.Net;
+using InTheHand.Net.Bluetooth;
+using InTheHand.Net.Sockets;
 using meshIt.Models;
 using Serilog;
-using Windows.Devices.Bluetooth.Advertisement;
 
 namespace meshIt.Services;
 
 /// <summary>
-/// Scans for nearby meshIt peers by watching for BLE advertisements that carry our
-/// service UUID. Raises <see cref="PeerDiscovered"/> and <see cref="PeerLost"/> events.
+/// Scans for nearby Bluetooth devices by periodically running device discovery.
+/// Uses 32feet.NET BluetoothClient instead of UWP BLE advertisement watcher.
 /// </summary>
 public sealed class BleScanner : IDisposable
 {
-    private BluetoothLEAdvertisementWatcher? _watcher;
-    private readonly Dictionary<ulong, DateTime> _lastSeenMap = new();
-    private Timer? _pruneTimer;
+    private readonly Dictionary<BluetoothAddress, DateTime> _lastSeenMap = new();
+    private CancellationTokenSource? _cts;
     private bool _isRunning;
 
-    /// <summary>Timeout after which a peer is considered lost (no ads received).</summary>
-    private static readonly TimeSpan PeerTimeout = TimeSpan.FromSeconds(15);
+    /// <summary>Timeout after which a peer is considered lost.</summary>
+    private static readonly TimeSpan PeerTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>Fired when a new peer is found or an existing peer's info updates.</summary>
     public event Action<Peer>? PeerDiscovered;
 
     /// <summary>Fired when a peer has not been seen within the timeout window.</summary>
-    public event Action<ulong>? PeerLost;
+    public event Action<BluetoothAddress>? PeerLost;
 
-    /// <summary>Start scanning for meshIt advertisements.</summary>
+    /// <summary>Start scanning for meshIt devices in a background loop.</summary>
     public void Start()
     {
         if (_isRunning) return;
 
-        try
-        {
-            _watcher = new BluetoothLEAdvertisementWatcher
-            {
-                ScanningMode = BluetoothLEScanningMode.Active
-            };
+        _cts = new CancellationTokenSource();
+        _isRunning = true;
 
-            // Filter for our service UUID
-            var filter = new BluetoothLEAdvertisementFilter();
-            filter.Advertisement.ServiceUuids.Add(BleConstants.ServiceUuid);
-            _watcher.AdvertisementFilter = filter;
-
-            _watcher.Received += OnAdvertisementReceived;
-            _watcher.Stopped += OnStopped;
-            _watcher.Start();
-
-            // Prune lost peers every 5 seconds
-            _pruneTimer = new Timer(PruneLostPeers, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-            _isRunning = true;
-
-            Log.Information("BLE Scanner started");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to start BLE scanner");
-            throw;
-        }
+        Task.Run(() => DiscoveryLoopAsync(_cts.Token));
+        Log.Information("Bluetooth Scanner started");
     }
 
     /// <summary>Stop scanning.</summary>
     public void Stop()
     {
-        if (!_isRunning || _watcher is null) return;
+        if (!_isRunning) return;
 
-        _watcher.Stop();
-        _pruneTimer?.Dispose();
-        _pruneTimer = null;
+        _cts?.Cancel();
         _isRunning = false;
-        Log.Information("BLE Scanner stopped");
+        Log.Information("Bluetooth Scanner stopped");
     }
 
-    private void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher sender,
-        BluetoothLEAdvertisementReceivedEventArgs args)
+    private async Task DiscoveryLoopAsync(CancellationToken ct)
     {
-        try
+        while (!ct.IsCancellationRequested)
         {
-            // Extract manufacturer data
-            foreach (var mfr in args.Advertisement.ManufacturerData)
+            try
             {
-                if (mfr.CompanyId != BleConstants.CompanyId) continue;
+                var client = new BluetoothClient();
 
-                var data = mfr.Data.ToArray();
-                if (data.Length < 17) continue; // at least 16 (guid) + 1 (name)
+                // Discover devices in range
+                var devices = await Task.Run(() => client.DiscoverDevices(255), ct);
 
-                var peerId = new Guid(data.AsSpan(0, 16));
-                var name = Encoding.UTF8.GetString(data, 16, data.Length - 16);
-
-                var peer = new Peer
+                foreach (var device in devices)
                 {
-                    Id = peerId,
-                    Name = name,
-                    Status = PeerStatus.Online,
-                    SignalStrength = args.RawSignalStrengthInDBm,
-                    BluetoothAddress = args.BluetoothAddress,
-                    LastSeen = DateTime.UtcNow
-                };
+                    if (ct.IsCancellationRequested) break;
 
-                _lastSeenMap[args.BluetoothAddress] = DateTime.UtcNow;
+                    var peer = new Peer
+                    {
+                        Id = GeneratePeerGuid(device.DeviceAddress),
+                        Name = string.IsNullOrWhiteSpace(device.DeviceName)
+                            ? device.DeviceAddress.ToString()
+                            : device.DeviceName,
+                        Status = device.Connected ? PeerStatus.Online : PeerStatus.Offline,
+                        SignalStrength = 0,
+                        BluetoothAddress = device.DeviceAddress,
+                        LastSeen = DateTime.UtcNow
+                    };
 
-                Log.Debug("Peer discovered: {Name} (RSSI {Rssi})", name, args.RawSignalStrengthInDBm);
-                PeerDiscovered?.Invoke(peer);
+                    _lastSeenMap[device.DeviceAddress] = DateTime.UtcNow;
+
+                    Log.Debug("Peer discovered: {Name} ({Address})", peer.Name, device.DeviceAddress);
+                    PeerDiscovered?.Invoke(peer);
+                }
+
+                client.Dispose();
+
+                // Prune lost peers
+                PruneLostPeers();
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Bluetooth discovery cycle failed");
+            }
+
+            // Wait before next discovery cycle
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(BleConstants.DiscoveryIntervalSeconds), ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
         }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Error parsing BLE advertisement");
-        }
     }
 
-    private void OnStopped(BluetoothLEAdvertisementWatcher sender,
-        BluetoothLEAdvertisementWatcherStoppedEventArgs args)
-    {
-        Log.Debug("BLE Scanner stopped: {Error}", args.Error);
-    }
-
-    private void PruneLostPeers(object? state)
+    private void PruneLostPeers()
     {
         var now = DateTime.UtcNow;
-        var lost = new List<ulong>();
+        var lost = new List<BluetoothAddress>();
 
         foreach (var (address, lastSeen) in _lastSeenMap)
         {
@@ -130,19 +121,25 @@ public sealed class BleScanner : IDisposable
         foreach (var address in lost)
         {
             _lastSeenMap.Remove(address);
-            Log.Debug("Peer lost: BLE address {Address}", address);
+            Log.Debug("Peer lost: {Address}", address);
             PeerLost?.Invoke(address);
         }
+    }
+
+    /// <summary>
+    /// Generate a deterministic GUID from a Bluetooth address so the same device
+    /// always gets the same Peer.Id across discoveries.
+    /// </summary>
+    private static Guid GeneratePeerGuid(BluetoothAddress address)
+    {
+        var bytes = Encoding.UTF8.GetBytes($"meshIt-peer-{address}");
+        var hash = System.Security.Cryptography.MD5.HashData(bytes);
+        return new Guid(hash);
     }
 
     public void Dispose()
     {
         Stop();
-        if (_watcher is not null)
-        {
-            _watcher.Received -= OnAdvertisementReceived;
-            _watcher.Stopped -= OnStopped;
-            _watcher = null;
-        }
+        _cts?.Dispose();
     }
 }

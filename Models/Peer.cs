@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using InTheHand.Net;
 
 namespace meshIt.Models;
 
@@ -13,7 +14,7 @@ public enum PeerStatus
 }
 
 /// <summary>
-/// Represents a discovered meshIt user on the BLE network.
+/// Represents a discovered meshIt user on the Bluetooth network.
 /// Observable so the UI updates automatically when properties change.
 /// </summary>
 public partial class Peer : ObservableObject
@@ -30,8 +31,8 @@ public partial class Peer : ObservableObject
     /// <summary>RSSI signal strength (dBm). Higher (closer to 0) = stronger.</summary>
     [ObservableProperty] private int _signalStrength;
 
-    /// <summary>BLE hardware address of the peer device.</summary>
-    [ObservableProperty] private ulong _bluetoothAddress;
+    /// <summary>Bluetooth hardware address of the peer device.</summary>
+    [ObservableProperty] private BluetoothAddress _bluetoothAddress = BluetoothAddress.None;
 
     /// <summary>Last time we received an advertisement from this peer.</summary>
     [ObservableProperty] private DateTime _lastSeen = DateTime.UtcNow;

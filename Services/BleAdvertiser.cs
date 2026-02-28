@@ -1,23 +1,26 @@
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
+using InTheHand.Net;
+using InTheHand.Net.Bluetooth;
+using InTheHand.Net.Sockets;
 using meshIt.Models;
 using Serilog;
-using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Storage.Streams;
 
 namespace meshIt.Services;
 
 /// <summary>
-/// Continuously broadcasts a BLE advertisement so other meshIt peers can discover us.
-/// Uses <see cref="BluetoothLEAdvertisementPublisher"/>.
+/// Makes the app discoverable by running a BluetoothListener on our service UUID.
+/// Accepts incoming RFCOMM connections and notifies the connection manager.
 /// </summary>
 public sealed class BleAdvertiser : IDisposable
 {
-    private BluetoothLEAdvertisementPublisher? _publisher;
+    private BluetoothListener? _listener;
+    private CancellationTokenSource? _cts;
     private bool _isRunning;
 
+    /// <summary>Fired when a remote peer connects to us.</summary>
+    public event Action<BluetoothClient, BluetoothAddress>? IncomingConnection;
+
     /// <summary>
-    /// Start advertising our presence with the given user id and display name.
+    /// Start listening for incoming Bluetooth connections on the meshIt service UUID.
     /// </summary>
     public void Start(Guid userId, string displayName)
     {
@@ -25,68 +28,95 @@ public sealed class BleAdvertiser : IDisposable
 
         try
         {
-            var advertisement = new BluetoothLEAdvertisement();
+            _listener = new BluetoothListener(BleConstants.ServiceUuid);
+            _listener.ServiceName = $"meshIt-{displayName}";
+            _listener.Start();
 
-            // Add our custom service UUID so scanners can filter on it
-            advertisement.ServiceUuids.Add(BleConstants.ServiceUuid);
-
-            // Encode userId + displayName in manufacturer data
-            var manufacturerData = new BluetoothLEManufacturerData
-            {
-                CompanyId = BleConstants.CompanyId
-            };
-
-            var userIdBytes = userId.ToByteArray(); // 16 bytes
-            var nameBytes = Encoding.UTF8.GetBytes(displayName);
-            var payload = new byte[16 + nameBytes.Length];
-
-            Array.Copy(userIdBytes, 0, payload, 0, 16);
-            Array.Copy(nameBytes, 0, payload, 16, nameBytes.Length);
-
-            var writer = new DataWriter();
-            writer.WriteBytes(payload);
-            manufacturerData.Data = writer.DetachBuffer();
-
-            advertisement.ManufacturerData.Add(manufacturerData);
-
-            _publisher = new BluetoothLEAdvertisementPublisher(advertisement);
-            _publisher.StatusChanged += OnStatusChanged;
-            _publisher.Start();
+            _cts = new CancellationTokenSource();
             _isRunning = true;
 
-            Log.Information("BLE Advertiser started — broadcasting as '{DisplayName}'", displayName);
+            Task.Run(() => AcceptLoopAsync(_cts.Token));
+
+            Log.Information("Bluetooth Advertiser started — listening as '{DisplayName}'", displayName);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to start BLE advertiser");
+            Log.Error(ex, "Failed to start Bluetooth advertiser");
             throw;
         }
     }
 
-    /// <summary>Stop advertising.</summary>
+    /// <summary>Stop advertising and close the listener.</summary>
     public void Stop()
     {
-        if (!_isRunning || _publisher is null) return;
+        if (!_isRunning) return;
 
-        _publisher.Stop();
+        _cts?.Cancel();
+
+        try
+        {
+            _listener?.Stop();
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Error stopping Bluetooth listener");
+        }
+
         _isRunning = false;
-        Log.Information("BLE Advertiser stopped");
+        Log.Information("Bluetooth Advertiser stopped");
     }
 
-    private void OnStatusChanged(BluetoothLEAdvertisementPublisher sender,
-        BluetoothLEAdvertisementPublisherStatusChangedEventArgs args)
+    private async Task AcceptLoopAsync(CancellationToken ct)
     {
-        Log.Debug("BLE Advertiser status changed: {Status} (error: {Error})",
-            args.Status, args.Error);
+        while (!ct.IsCancellationRequested && _listener is not null)
+        {
+            try
+            {
+                // Accept incoming connection (blocking call run on thread pool)
+                var client = await Task.Run(() =>
+                {
+                    if (_listener.Pending())
+                        return _listener.AcceptBluetoothClient();
+                    return null;
+                }, ct);
+
+                if (client is not null)
+                {
+                    // Get the remote address from the client
+                    var remoteAddress = BluetoothAddress.None;
+                    try
+                    {
+                        var remoteName = client.RemoteMachineName;
+                        Log.Information("Incoming Bluetooth connection from {Name}", remoteName);
+                    }
+                    catch
+                    {
+                        Log.Information("Incoming Bluetooth connection accepted");
+                    }
+
+                    IncomingConnection?.Invoke(client, remoteAddress);
+                }
+                else
+                {
+                    // No pending connection, wait briefly before checking again
+                    await Task.Delay(500, ct);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                if (!ct.IsCancellationRequested)
+                    Log.Warning(ex, "Error accepting Bluetooth connection");
+            }
+        }
     }
 
     public void Dispose()
     {
         Stop();
-        if (_publisher is not null)
-        {
-            _publisher.StatusChanged -= OnStatusChanged;
-            _publisher = null;
-        }
+        _cts?.Dispose();
     }
 }
